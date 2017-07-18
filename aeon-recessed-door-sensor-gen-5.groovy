@@ -101,7 +101,7 @@ metadata {
 		}
 
 		main (["contact"])
-		details(["battery","refresh"])
+		details(["contact","battery","refresh"])
 	}
 }
 
