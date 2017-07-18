@@ -5,18 +5,82 @@
  *  Author: Mike
  *  Modified by: Mike
  *  Date: 2015-2-4
+ *  
+ *  Updated by Alex Ruffell - Battery Fix
+ *  Updated On: 18-Jul-2017 
  */
 
 // for the UI
 metadata {
 	// Automatically generated. Make future change here.
 	definition (name: "Aeon Recessed Door Sensor", namespace: "jabbera", author: "Mike") {
-		capability "Contact Sensor"
-		capability "Sensor"
-		capability "Battery"
+		capability	"Contact Sensor"
+		capability	"Sensor"
+		capability	"Battery"
+		capability	"Configuration"
+		
+		def			"batteryReportingEnabled",	"boolean"		//This will store whether we have enabled Parameter 101 (Battery Reporting) by setting it to 1 (Default: 0)
         
+        /*
+        Z-Wave Command Classes
+        Hex id from https://graph.api.smartthings.com/ide/doc/zwave-utils.html
+
+		Manufacturer: Aeotec
+		Model: Recessed Door Sensor Gen5 (ZW089-A)
+		Z-Wave Certification Number: ZC10-14120008
+		http://products.z-wavealliance.org/products/1179
+		Product Type ID: 0x0102
+		Product ID: 0x0059
+		
+		To Include:
+		Turn the primary controller of Z-Wave network into inclusion mode, short press the product’s Z-Wave button that you can find in the back of the product. 
+
+		To Exclude:
+		Turn the primary controller of Z-Wave network into exclusion mode, short press the product’s Z-Wave button that you can find in back of the product. 
+
+		Factory Reset:
+		Press and hold the Z-Wave button that you can find in back of the product for 20 seconds and then release. This procedure should only be used when the primary controller is inoperable. 
+
+		Wake Up:
+		Press and hold the Z-Wave button for 5 seconds will trigger sending the Wake up notification command and then keep waking up for 10 seconds after release the Z-Wave button.
+		
+		Supported Command Classes 
+  
+        	cc:
+			0x5E
+			0x86 Version
+			0x72 Manufacturer Specific 
+			0x98 Security
+			
+			ccOut:
+			0x5A Device Reset Locally
+			0x82 Hail
+
+			sec:
+			0x30 Sensor Binary
+			0x80 Battery
+			0x84 Wake Up
+			0x70 Configuration 
+			0x85 Association 
+			0x59 Association Grp Info
+			0x71 Alarm
+			0x7A Firmware Update Md
+			0x73 Powerlevel
+			
+        */
+		
+		//Raw Description
+		//zw:Ss type:0701 mfr:0086 prod:0102 model:0059 ver:1.13 zwv:3.92 lib:03 cc:5E,86,72,98 ccOut:5A,82 sec:30,80,84,70,85,59,71,7A,73 role:06 ff:8C00 ui:8C00
+
+
+		//Fingerprint - old method
 		fingerprint deviceId: "0x0701", inClusters: "0x5E,0x86,0x72,0x98,0xEF,0x5A,0x82"
-                fingerprint deviceId: "0x0701", inClusters: "0x5E 0x30 0x80 0x84 0x70 0x85 0x59 0x71 0x86 0x72 0x73 0x7A 0x98", outClusters: "0x5A 0x82"
+        fingerprint deviceId: "0x0701", inClusters: "0x5E 0x30 0x80 0x84 0x70 0x85 0x59 0x71 0x86 0x72 0x73 0x7A 0x98", outClusters: "0x5A 0x82"
+		
+		//Fingerprint - new method
+        fingerprint mfr: "0086", prod: "0102", model: "0059"
+        fingerprint type: "0701", cc: "5E,86,72,98", ccOut: "5A,82", sec: "sec:30,80,84,70,85,59,71,7A,73"
+		
 	}
 
 	// simulator metadata
@@ -39,8 +103,8 @@ metadata {
 	    	state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
 		}
 
-		main "contact"
-		details(["contact", "battery","configure"])
+		main (["contact"])
+		details(["battery","refresh"])
 	}
 }
 
@@ -115,7 +179,17 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	log.debug "WakeUpNotification. Asking for battery life."
     
 	def result = [createEvent(descriptionText: "${device.displayName} woke up", isStateChange: true, displayed: true)]
-        
+
+	if (batteryReportingEnabled != true) {
+		// Set param #101 (0x65) to 1 to enable reporting of battery levels when the sensor wakes up - do this only when parameter != 1.
+		// If for whatever reason you need to reset the variable, go to the IDE under the device settings and set the variable to false.
+		result << zwave.configurationV1.configurationSet(parameterNumber: 0x65, size: 1, scaledConfigurationValue: 1)
+		if (zwave.configurationV1.configurationGet(parameterNumber: 0x65) == 1) {
+			log.debug "Parameter 101 - Battery Reporting - Successfully Enabled!"
+		}
+		return createEvent(name: "batteryReportingEnabled", value: true)
+	}
+	
     result << secure(zwave.batteryV1.batteryGet())
     
     if (null == state.wakeUpSet)
