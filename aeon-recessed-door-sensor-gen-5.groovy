@@ -13,7 +13,7 @@
 // for the UI
 metadata {
 	// Automatically generated. Make future change here.
-	definition (name: "Aeon Recessed Door Sensor", namespace: "jabbera", author: "Mike") {
+	definition (name: "Aeon Recessed Door Sensor - Battery Fix v2", namespace: "jabbera", author: "Mike") {
 		capability	"Contact Sensor"
 		capability	"Sensor"
 		capability	"Battery"
