@@ -72,7 +72,7 @@ metadata {
 
 		//Fingerprint - old method
 		fingerprint deviceId: "0x0701", inClusters: "0x5E,0x86,0x72,0x98,0xEF,0x5A,0x82"
-        fingerprint deviceId: "0x0701", inClusters: "0x5E 0x30 0x80 0x84 0x70 0x85 0x59 0x71 0x86 0x72 0x73 0x7A 0x98", outClusters: "0x5A 0x82"
+		fingerprint deviceId: "0x0701", inClusters: "0x5E 0x30 0x80 0x84 0x70 0x85 0x59 0x71 0x86 0x72 0x73 0x7A 0x98", outClusters: "0x5A 0x82"
 		
 		//Fingerprint - new method
 		fingerprint mfr: "0086", prod: "0102", model: "0059"
@@ -149,7 +149,7 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 		}
 		else
 		{
-			log.debug("failed to decypt ${cmd?.inspect()}")
+			log.debug("Failed to decrypt ${cmd?.inspect()}")
 		}
 }
 
@@ -173,18 +173,18 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd)
 
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 {
-	log.debug "WakeUpNotification. Asking for battery life."
+	log.debug "WakeUpNotification. Enabling battery level reporting (if needed) and asking for battery level."
 
 	def result = [createEvent(descriptionText: "${device.displayName} woke up", isStateChange: true, displayed: true)]
 
-	if (state.batteryReportingEnabled != true) {
-		// Set param #101 (0x65) to 1 to enable reporting of battery levels when the sensor wakes up - do this only when parameter != 1.
-		// If for whatever reason you need to reset the variable, go to the IDE under the device settings and set the variable to false.
-		result << zwave.configurationV1.configurationSet(parameterNumber: 0x65, size: 1, scaledConfigurationValue: 1)
-		if (zwave.configurationV1.configurationGet(parameterNumber: 0x65) == 1) {
-			log.debug "Parameter 101 - Battery Reporting - Successfully Enabled!"
-		}
+	if (state.batteryReportingEnabled != false) {
+		// Set param #101 (0x65) to 1 to enable reporting of battery levels when the sensor wakes up - do this once regardless of its current value.
+		// I will have to add a preference to force the state.batteryReportingEnabled to false again in case the parameter gets reset to 0 somehow
+		secure(zwave.configurationV1.configurationSet(parameterNumber: 0x65, size: 1, scaledConfigurationValue: 1))
+		log.debug "Set Parameter 101 to 1 to enable battery reporting."
+
 		state.batteryReportingEnabled = true
+		log.debug "state.batteryReportingEnabled set to ${state.batteryReportingEnabled} so we do not keep setting the parameter."
 	}
 	
 	result << secure(zwave.batteryV1.batteryGet())
@@ -198,7 +198,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 		result << secure(zwave.wakeUpV2.wakeUpIntervalSet(seconds:reportIntervalSec, nodeid:zwaveHubNodeId))
 	}
 
-	result << response("delay 6000") // This is to give the sensor enough time to return a result	before telling the sensor to turn off its reciever           
+	result << response("delay 6000") // This is to give the sensor enough time to return a result before telling the sensor to turn off its receiver           
 	result << secure(zwave.wakeUpV2.wakeUpNoMoreInformation())
 	result
 }
