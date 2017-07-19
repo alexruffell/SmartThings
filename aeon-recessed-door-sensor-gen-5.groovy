@@ -178,7 +178,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 
 	def result = [createEvent(descriptionText: "${device.displayName} woke up", isStateChange: true, displayed: true)]
 
-	if (state.batteryReportingEnabled != false) {
+	if (state.batteryReportingEnabled != true) {
 		// Set param #101 (0x65) to 1 to enable reporting of battery levels when the sensor wakes up - do this once regardless of its current value.
 		// I will have to add a preference to force the state.batteryReportingEnabled to false again in case the parameter gets reset to 0 somehow
 		secure(zwave.configurationV1.configurationSet(parameterNumber: 0x65, size: 1, scaledConfigurationValue: 1))
